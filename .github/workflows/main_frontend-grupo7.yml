@@ -15,6 +15,11 @@ jobs:
     permissions:
       contents: read #This is required for actions/checkout
 
+    # Configura que todos los comandos 'run' de este job se ejecuten dentro de la carpeta frontend
+    defaults:
+      run:
+        working-directory: frontend
+
     steps:
       - uses: actions/checkout@v4
 
@@ -33,7 +38,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: node-app
-          path: .
+          path: frontend # Sube solo lo compilado dentro de la subcarpeta frontend
 
   deploy:
     runs-on: ubuntu-latest
@@ -47,7 +52,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: node-app
-      
+        
       - name: Login to Azure
         uses: azure/login@v2
         with:
@@ -62,4 +67,3 @@ jobs:
           app-name: 'frontend-grupo7'
           slot-name: 'Production'
           package: .
-          
