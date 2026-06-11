@@ -19,8 +19,9 @@ const evalRoutes     = require('./routes/eval');
 const app = express();
 app.set('trust proxy', 1);
 
+// Leemos las URLs permitidas y nos aseguramos de quitarles espacios y barras '/' al final
 const frontendUrls = process.env.FRONTEND_URL
-  ? process.env.FRONTEND_URL.split(',').map((url) => url.trim())
+  ? process.env.FRONTEND_URL.split(',').map((url) => url.trim().replace(/\/$/, ''))
   : [];
 
 if (!frontendUrls.length) {
@@ -29,11 +30,27 @@ if (!frontendUrls.length) {
 
 const corsOptions = {
   origin: (origin, callback) => {
+    // Si no hay origin (como en peticiones server-to-server o algunas herramientas), lo permitimos
     if (!origin) return callback(null, true);
-    if (frontendUrls.includes(origin)) return callback(null, true);
+    
+    // Limpiamos la barra final del origen entrante por si acaso
+    const sanitizedOrigin = origin.trim().replace(/\/$/, '');
+
+    // Verificamos si el origen está en nuestra lista de permitidos
+    if (frontendUrls.includes(sanitizedOrigin)) {
+      return callback(null, true);
+    }
+    
+    // Fallback de seguridad: Si coincide con localhost en desarrollo
+    if (process.env.NODE_ENV !== 'production' && sanitizedOrigin.startsWith('http://localhost')) {
+      return callback(null, true);
+    }
+
+    logger.error('cors_unauthorized', { originBlocked: origin });
     return callback(new Error('CORS no autorizado'), false);
   },
   credentials: true,
+  optionsSuccessStatus: 200 // Responde OK (200) a los navegadores viejos con peticiones OPTIONS
 };
 
 const apiLimiter = rateLimit({
@@ -45,7 +62,7 @@ const apiLimiter = rateLimit({
 });
 
 app.use(helmet());
-app.use(cors(corsOptions));
+app.use(cors(corsOptions)); // Aplicación del CORS corregido
 app.use(apiLimiter);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -85,7 +102,7 @@ app.get('/health', async (_req, res) => {
 });
 
 app.use('/api/auth',       authRoutes);
-app.use('/api/products',   productRoutes);
+app.use('/api/products',    productRoutes);
 app.use('/api/categories', categoryRoutes);
 app.use('/api/clients',    clientRoutes);
 app.use('/api/sales',      saleRoutes);
