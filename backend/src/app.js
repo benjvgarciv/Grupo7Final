@@ -30,18 +30,23 @@ if (!frontendUrls.length) {
 
 const corsOptions = {
   origin: (origin, callback) => {
-    // Si no hay origin (como en peticiones server-to-server o algunas herramientas), lo permitimos
+    // Si no hay origin (como en peticiones server-to-server), lo permitimos
     if (!origin) return callback(null, true);
     
     // Limpiamos la barra final del origen entrante por si acaso
     const sanitizedOrigin = origin.trim().replace(/\/$/, '');
 
-    // Verificamos si el origen está en nuestra lista de permitidos
+    // 1. Verificamos si el origen está en nuestra lista de permitidos del .env
     if (frontendUrls.includes(sanitizedOrigin)) {
       return callback(null, true);
     }
     
-    // Fallback de seguridad: Si coincide con localhost en desarrollo
+    // 2. COMODÍN DE SEGURIDAD PARA AZURE (Evita bloqueos por strings estrictos)
+    if (sanitizedOrigin.includes('frontend-grupo7') && sanitizedOrigin.endsWith('.azurewebsites.net')) {
+      return callback(null, true);
+    }
+    
+    // 3. Fallback de seguridad: Si coincide con localhost en desarrollo
     if (process.env.NODE_ENV !== 'production' && sanitizedOrigin.startsWith('http://localhost')) {
       return callback(null, true);
     }
@@ -50,7 +55,7 @@ const corsOptions = {
     return callback(new Error('CORS no autorizado'), false);
   },
   credentials: true,
-  optionsSuccessStatus: 200 // Responde OK (200) a los navegadores viejos con peticiones OPTIONS
+  optionsSuccessStatus: 200 // Responde OK (200) a las peticiones OPTIONS preflight
 };
 
 const apiLimiter = rateLimit({
@@ -61,8 +66,13 @@ const apiLimiter = rateLimit({
   message: { error: 'Demasiadas solicitudes, intenta nuevamente más tarde.' },
 });
 
-app.use(helmet());
-app.use(cors(corsOptions)); // Aplicación del CORS corregido
+// Configuración de Helmet adaptada para no interferir con la comunicación del API en producción
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" },
+  contentSecurityPolicy: false // Evita que bloquee las llamadas asíncronas de Next.js
+}));
+
+app.use(cors(corsOptions)); // Aplicación del CORS corregido y flexible
 app.use(apiLimiter);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -118,4 +128,5 @@ app.use((err, _req, res, _next) => {
   res.status(err.status || 500).json({ error: err.message || 'Error interno del servidor' });
 });
 
+module.exports = app;
 module.exports = app;
