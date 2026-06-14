@@ -23,7 +23,7 @@ jobs:
         with:
           node-version: '24.x'
 
-      # Forzamos a que npm install y build se ejecuten dentro de la carpeta backend
+      # Entramos a la carpeta backend para instalar dependencias y compilar
       - name: npm install, build, and test
         run: |
           cd backend
@@ -31,12 +31,12 @@ jobs:
           npm run build --if-present
           npm run test --if-present
 
-      # Cambiamos el path para empaquetar EXCLUSIVAMENTE el contenido de la carpeta backend
+      # Subimos la carpeta "backend" de forma explícita (evita conflictos de patrones)
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
         with:
           name: node-app
-          path: .
+          path: backend
 
   deploy:
     runs-on: ubuntu-latest
@@ -46,10 +46,12 @@ jobs:
       contents: read # This is required for actions/checkout
 
     steps:
+      # Descargamos el artefacto en una carpeta temporal aislada
       - name: Download artifact from build job
         uses: actions/download-artifact@v4
         with:
           name: node-app
+          path: ./backend-deploy
         
       - name: Login to Azure
         uses: azure/login@v2
@@ -58,10 +60,11 @@ jobs:
           tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_04F6221B01E2471FAEF96CC0B76F77D3 }}
           subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_F7C00F218FF8467F8C81771DCBCC5998 }}
 
+      # Desplegamos únicamente el contenido del backend directo en la raíz de Azure
       - name: 'Deploy to Azure Web App'
         id: deploy-to-webapp
         uses: azure/webapps-deploy@v3
         with:
           app-name: 'backend-grupo7'
           slot-name: 'Production'
-          package: .
+          package: ./backend-deploy
