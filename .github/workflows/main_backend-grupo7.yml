@@ -23,22 +23,23 @@ jobs:
         with:
           node-version: '24.x'
 
-      # Validamos que compile en el pipeline antes de subir
+      # Instalamos y probamos que todo compile correctamente
       - name: npm install and build
         run: |
           cd backend
           npm install
           npm run build --if-present
 
-      # Subimos la carpeta backend de manera directa e impecable
+      # Eliminamos node_modules para que el ZIP no pese nada y no se caiga Azure
+      - name: Clean node_modules before uploading
+        run: rm -rf backend/node_modules
+
+      # Subimos la carpeta backend limpia de forma exitosa
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
         with:
           name: node-app
           path: backend
-          # Excluimos node_modules del ZIP para que pese poco y no falle el deploy
-          exclude-with: |
-            **/node_modules/**
 
   deploy:
     runs-on: ubuntu-latest
