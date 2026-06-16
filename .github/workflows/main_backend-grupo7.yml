@@ -23,19 +23,20 @@ jobs:
         with:
           node-version: '24.x'
 
-      # Trabajamos dentro de tu carpeta backend real
-      - name: npm install production dependencies
-        working-directory: ./backend
+      # Entramos a la carpeta backend, instalamos y creamos un ZIP plano con el contenido interno
+      - name: Prepare production build and zip
         run: |
+          cd backend
           npm install --omit=dev
           npm run build --if-present
+          zip -r ../release.zip .
 
-      # Subimos el CONTENIDO de la carpeta backend
+      # Subimos únicamente nuestro archivo ZIP comprimido
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
         with:
           name: node-app
-          path: ./backend/
+          path: release.zip
 
   deploy:
     runs-on: ubuntu-latest
@@ -45,12 +46,12 @@ jobs:
       contents: read
 
     steps:
-      # Descargamos el contenido en una carpeta explícita del entorno virtual
+      # Descargamos el archivo ZIP en la raíz del entorno de ejecución
       - name: Download artifact from build job
         uses: actions/download-artifact@v4
         with:
           name: node-app
-          path: ./app-content
+          path: .
         
       - name: Login to Azure
         uses: azure/login@v2
@@ -59,11 +60,11 @@ jobs:
           tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_04F6221B01E2471FAEF96CC0B76F77D3 }}
           subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_F7C00F218FF8467F8C81771DCBCC5998 }}
 
-      # Desplegamos el CONTENIDO interno de app-content directamente a Azure
+      # Le pasamos el archivo ZIP directo a Azure para que lo extraiga en la raíz real sin subcarpetas
       - name: 'Deploy to Azure Web App'
         id: deploy-to-webapp
         uses: azure/webapps-deploy@v3
         with:
           app-name: 'backend-grupo7'
           slot-name: 'Production'
-          package: ./app-content
+          package: ./release.zip
