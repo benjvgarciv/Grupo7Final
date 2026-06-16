@@ -23,14 +23,14 @@ jobs:
         with:
           node-version: '24.x'
 
-      # Instalamos solo dependencias de producción para mantener el ZIP ligero
+      # Instalamos solo dependencias de producción directamente en el directorio backend
       - name: npm install production dependencies
         run: |
           cd backend
           npm install --omit=dev
           npm run build --if-present
 
-      # Subimos la carpeta backend de manera directa
+      # Subimos el contenido real de la carpeta backend como el artefacto que usará Azure
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
         with:
@@ -45,11 +45,12 @@ jobs:
       contents: read
 
     steps:
+      # Descargamos el artefacto directamente en la raíz de ejecución del deploy job
       - name: Download artifact from build job
         uses: actions/download-artifact@v4
         with:
           name: node-app
-          path: ./backend-deploy
+          path: ./workspace
         
       - name: Login to Azure
         uses: azure/login@v2
@@ -58,10 +59,11 @@ jobs:
           tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_04F6221B01E2471FAEF96CC0B76F77D3 }}
           subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_F7C00F218FF8467F8C81771DCBCC5998 }}
 
+      # Desplegamos la carpeta limpia como paquete directo
       - name: 'Deploy to Azure Web App'
         id: deploy-to-webapp
         uses: azure/webapps-deploy@v3
         with:
           app-name: 'backend-grupo7'
           slot-name: 'Production'
-          package: ./backend-deploy
+          package: ./workspace
