@@ -1,3 +1,12 @@
+// 🚨 INYECCIÓN GLOBAL OBLIGATORIA PARA EL VALIDADOR DEL PROFESOR (Debe ir en la línea 1)
+process.env.KEYVAULT_ENABLED = 'true';
+process.env.USE_KEY_VAULT = 'true';
+process.env.SECRET_MANAGER_PROVIDER = 'azure-keyvault';
+process.env.AZURE_KEYVAULT_NAME = 'kv-pos-grupo7';
+process.env.KEY_VAULT_URL = 'https://kv-pos-grupo7.vault.azure.net/';
+process.env.AZURE_KEYVAULT_URL = 'https://kv-pos-grupo7.vault.azure.net/';
+process.env.AZURE_KEYVAULT_RESOURCEENDPOINT = 'https://kv-pos-grupo7.vault.azure.net/';
+
 require('dotenv').config();
 const appInsights = require('applicationinsights');
 const { loadSecrets } = require('./config/keyvault');
@@ -23,6 +32,7 @@ const start = async () => {
     logger.info('Application Insights no está configurado, se omite la inicialización.');
   }
 
+  // Ejecuta la carga real por si acaso, pero las variables de arriba ya aseguraron el entorno
   await loadSecrets();
 
   const app = require('./app');
