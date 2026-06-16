@@ -30,7 +30,7 @@ if (!frontendUrls.length) {
 
 const corsOptions = {
   origin: (origin, callback) => {
-    // Si no hay origin (como en peticiones server-to-server), lo permitimos
+    // Si no hay origin (como en peticiones server-to-server o pings directos de Azure), lo permitimos
     if (!origin) return callback(null, true);
     
     // Limpiamos la barra final del origen entrante por si acaso
@@ -41,9 +41,14 @@ const corsOptions = {
       return callback(null, true);
     }
     
-    // 2. COMODÍN DE SEGURIDAD PARA AZURE (Evita bloqueos por strings estrictos)
-    if (sanitizedOrigin.includes('frontend-grupo7') && sanitizedOrigin.endsWith('.azurewebsites.net')) {
-      return callback(null, true);
+    // 2. COMODÍN DE SEGURIDAD PARA AZURE (Evita bloqueos del Frontend, Backend y herramientas SCM/Kudu)
+    if (sanitizedOrigin.endsWith('.azurewebsites.net')) {
+      if (
+        sanitizedOrigin.includes('frontend-grupo7') || 
+        sanitizedOrigin.includes('backend-grupo7')
+      ) {
+        return callback(null, true);
+      }
     }
     
     // 3. Fallback de seguridad: Si coincide con localhost en desarrollo
