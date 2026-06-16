@@ -23,23 +23,26 @@ jobs:
         with:
           node-version: '24.x'
 
-      # Instalamos y probamos que todo compile correctamente
-      - name: npm install and build
+      # Instalamos solo las dependencias necesarias de producción para que no pese casi nada
+      - name: npm install production dependencies
         run: |
           cd backend
-          npm install
+          npm install --omit=dev
           npm run build --if-present
 
-      # Eliminamos node_modules para que el ZIP no pese nada y no se caiga Azure
-      - name: Clean node_modules before uploading
-        run: rm -rf backend/node_modules
+      # Creamos una carpeta limpia para aislar los archivos y asegurar que vayan en la raíz
+      - name: Prepare deployment folder
+        run: |
+          mkdir deploy-ready
+          cp -r backend/* deploy-ready/
+          # Si usas subcarpetas importantes como src/ o dist/, esto las copiará correctamente
 
-      # Subimos la carpeta backend limpia de forma exitosa
+      # Subimos el artefacto desde la carpeta limpia estructurada
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
         with:
           name: node-app
-          path: backend
+          path: deploy-ready
 
   deploy:
     runs-on: ubuntu-latest
